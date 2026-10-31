@@ -1,9 +1,9 @@
 {
-  "name": "StrideUp – 0 til 5 km",
+  "name": "StrideUp – Couch to 5K",
   "short_name": "StrideUp",
-  "description": "Fra sofa til 5 km på 8 uger – med stemme i ørerne, GPS-rute og en plan der tilpasser sig dig.",
-  "lang": "da",
-  "start_url": "./#hjem",
+  "description": "From couch to 5K in 8 weeks – with voice coaching, GPS route and a plan that adapts to you.",
+  "lang": "en",
+  "start_url": "./#home",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
