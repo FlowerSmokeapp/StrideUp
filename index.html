@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Løbeklar">
+<meta name="apple-mobile-web-app-title" content="StrideUp">
 <script>
 /* På en computer vises appen i en telefonramme; på mobil (og inde i rammen) kører den normalt. */
 window.FRAMED = window.top===window && !/[?&]embed/.test(location.search) &&
@@ -21,7 +21,7 @@ window.FRAMED = window.top===window && !/[?&]embed/.test(location.search) &&
 if(window.FRAMED)document.documentElement.classList.add('desk');
 if(/[?&]embed/.test(location.search))document.documentElement.classList.add('embed');
 </script>
-<title>Løbeklar</title>
+<title>StrideUp</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&display=swap" rel="stylesheet">
@@ -207,16 +207,16 @@ html.embed .runner .wrap{padding-top:58px}
 <body>
 <div class="stage" id="stage" hidden>
   <div class="pitch">
-    <div class="logo"><i></i><span>LØBEKLAR</span></div>
+    <div class="logo"><i></i><span>STRIDEUP</span></div>
     <h1>Fra sofa til <em>5 km</em> på 8 uger</h1>
     <p>Gang og løb i en plan, der tilpasser sig, hvis du springer en dag over. En stemme i ørerne siger til, når du skal skifte, og GPS viser rute og tempo. Bagefter venter 10 km.</p>
     <div class="qr"><div id="qr"></div><div><b>Åbn på din telefon</b><span class="small muted">Scan koden, og tryk så <b style="display:inline;font:inherit;font-weight:800">Del → Føj til hjemmeskærm</b> (iPhone) eller <b style="display:inline;font:inherit;font-weight:800">Installer app</b> (Android).</span></div></div>
   </div>
-  <div class="device" id="device"><iframe id="phoneFrame" title="Løbeklar på en telefon" allow="geolocation; screen-wake-lock"></iframe></div>
+  <div class="device" id="device"><iframe id="phoneFrame" title="StrideUp på en telefon" allow="geolocation; screen-wake-lock"></iframe></div>
 </div>
 <div class="app">
   <header class="top">
-    <div class="logo"><i></i><span>LØBEKLAR</span></div>
+    <div class="logo"><i></i><span>STRIDEUP</span></div>
     <span id="tier" class="pill">Gratis</span>
   </header>
   <main id="view"></main>
@@ -347,7 +347,7 @@ function pack(sim,plan,w,s){
 }
 
 /* ---------- State ---------- */
-const KEY='lobeklar-v1';
+const KEY='strideup-v1';
 function seedState(){
   const now=Date.now(),hist=[];
   [[0,0,-14],[0,1,-12],[0,2,-9],[1,0,-5]].forEach(([w,s,d],i)=>{
@@ -404,14 +404,14 @@ function drawRoute(cv,pts,{light=false,grid=true}={}){
 const STANDALONE=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
 const IOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 let installEvt=null,hideInstall=false;
-try{hideInstall=localStorage.getItem('lobeklar-install')==='skjul'}catch(e){}
+try{hideInstall=localStorage.getItem('strideup-install')==='skjul'}catch(e){}
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;if(tab==='hjem')render()});
 addEventListener('appinstalled',()=>{hideInstall=true;render()});
 const SHARE_ICO='<svg class="share-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15V3M8 7l4-4 4 4M5 11v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9"/></svg>';
 function installHTML(){
   if(STANDALONE||hideInstall||window.top!==window)return '';
   if(!IOS&&!installEvt)return '';
-  return `<div class="install"><img src="icons/icon-192.png" alt=""><p>${IOS?'<b>Gem Løbeklar på hjemmeskærmen:</b> tryk på '+SHARE_ICO+' Del og vælg <b>Føj til hjemmeskærm</b>.':'<b>Installer Løbeklar</b> og åbn den fra hjemmeskærmen som en app.'}</p>
+  return `<div class="install"><img src="icons/icon-192.png" alt=""><p>${IOS?'<b>Gem StrideUp på hjemmeskærmen:</b> tryk på '+SHARE_ICO+' Del og vælg <b>Føj til hjemmeskærm</b>.':'<b>Installer StrideUp</b> og åbn den fra hjemmeskærmen som en app.'}</p>
   ${IOS?'':'<button class="btn orange" id="doInstall">Installer</button>'}<button class="btn ghost" id="noInstall" aria-label="Skjul">✕</button></div>`;
 }
 
@@ -468,7 +468,7 @@ function renderHome(){
   $('#keepPlan')?.addEventListener('click',()=>{st.ackGap=st.history[st.history.length-1].date;save();render()});
   $('#go10')?.addEventListener('click',choose10k);
   $('#doInstall')?.addEventListener('click',async()=>{if(!installEvt)return;installEvt.prompt();try{await installEvt.userChoice}catch(e){}installEvt=null;render()});
-  $('#noInstall')?.addEventListener('click',()=>{hideInstall=true;try{localStorage.setItem('lobeklar-install','skjul')}catch(e){}render()});
+  $('#noInstall')?.addEventListener('click',()=>{hideInstall=true;try{localStorage.setItem('strideup-install','skjul')}catch(e){}render()});
 }
 
 function renderPlan(){
@@ -516,7 +516,7 @@ function renderHistory(){
 function renderProfile(){
   const P=st.premium;
   let html=`<h1 style="font-size:30px">Profil</h1>
-  <div class="card stack"><div class="row between"><h2 style="font-size:24px">Løbeklar ${P?'Premium':'Gratis'}</h2><span class="pill ${P?'pro':''}">${P?'Aktiv':'Uge 1–2'}</span></div>
+  <div class="card stack"><div class="row between"><h2 style="font-size:24px">StrideUp ${P?'Premium':'Gratis'}</h2><span class="pill ${P?'pro':''}">${P?'Aktiv':'Uge 1–2'}</span></div>
    ${P?'<p class="muted" style="margin:0">Du har adgang til alle planer, skridttæller, statistik pr. løb og sync.</p><button class="btn" id="cancelPro">Afslut Premium (demo)</button>':'<p class="muted" style="margin:0">Gratis giver dig uge 1 og 2. Premium giver alle 8 uger, 10 km-planen, skridttæller, statistik pr. løb og sync med Apple Health og Google Fit.</p><button class="btn orange" id="getPro">Se Premium</button>'}</div>
   <div class="card"><h3 style="font-size:20px;margin-bottom:4px">Under løbet</h3>
     <label class="toggle" for="tVoice"><span><b>Stemme i ørerne</b><br><span class="small muted">Siger til ved skift, halvvejs og sidste interval</span></span><span class="switch"><input type="checkbox" id="tVoice" ${st.voice?'checked':''}></span></label>

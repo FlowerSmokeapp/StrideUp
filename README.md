@@ -1,4 +1,4 @@
-# Løbeklar – 0 til 5 km (og 10 km)
+# StrideUp – 0 til 5 km (og 10 km)
 
 Prototype af en løbeapp: 8-ugers plan der blander gang og løb, stemme i ørerne ved hvert skift, GPS-rute og tempo, automatisk justering hvis du holder pause, og en 10 km-plan bagefter.
 
