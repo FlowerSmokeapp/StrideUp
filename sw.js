@@ -1,5 +1,5 @@
 // Gemmer appen, så den kan åbnes uden net. Bump versionen ved nye udgivelser.
-const CACHE = 'strideup-v1';
+const CACHE = 'strideup-v2';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
