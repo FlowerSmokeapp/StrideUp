@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#e8f3fb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b1a26" media="(prefers-color-scheme: dark)">
+<meta name="description" content="Fra sofa til 5 km på 8 uger – med stemme i ørerne, GPS-rute og en plan der tilpasser sig dig.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Løbeklar">
+<script>
+/* På en computer vises appen i en telefonramme; på mobil (og inde i rammen) kører den normalt. */
+window.FRAMED = window.top===window && !/[?&]embed/.test(location.search) &&
+  matchMedia('(min-width: 760px) and (hover: hover) and (pointer: fine)').matches &&
+  !matchMedia('(display-mode: standalone)').matches;
+if(window.FRAMED)document.documentElement.classList.add('desk');
+if(/[?&]embed/.test(location.search))document.documentElement.classList.add('embed');
+</script>
+<title>Løbeklar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&display=swap" rel="stylesheet">
+<style>
+/* Layout: one phone-width column; header, scrollable view, bottom tab bar. Run screen is a full overlay tinted by phase (orange = løb, blå = gå). */
+:root{
+  --sky:#e8f3fb;        /* app background */
+  --card:#ffffff;
+  --ink:#0d2b40;        /* text */
+  --muted:#5a7487;
+  --line:#d3e4f0;
+  --blue:#1f86d1;       /* gå / primary */
+  --blue-soft:#cfe7f8;
+  --orange:#ff6f1a;     /* løb / action */
+  --orange-soft:#ffe1cc;
+  --good:#1f9d6b;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Nunito Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --sky:#0b1a26;--card:#122737;--ink:#e6f1f8;--muted:#8fa9bb;--line:#21405a;
+    --blue:#4fb0f0;--blue-soft:#183f5c;--orange:#ff8a3d;--orange-soft:#4a2810;--good:#3cc58f;color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --sky:#0b1a26;--card:#122737;--ink:#e6f1f8;--muted:#8fa9bb;--line:#21405a;
+  --blue:#4fb0f0;--blue-soft:#183f5c;--orange:#ff8a3d;--orange-soft:#4a2810;--good:#3cc58f;color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--sky);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
+h1,h2,h3{font-family:var(--display);font-weight:700;margin:0;text-wrap:balance;letter-spacing:.01em}
+.num{font-variant-numeric:tabular-nums}
+.app{max-width:440px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+header.top{display:flex;align-items:center;justify-content:space-between;padding:calc(18px + env(safe-area-inset-top)) 18px 6px}
+.logo{font-family:var(--display);font-weight:800;font-size:28px;letter-spacing:.02em;display:flex;align-items:center;gap:8px}
+.logo i{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--orange);box-shadow:16px 0 0 var(--blue)}
+.logo span{margin-left:16px}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;padding:4px 10px;border-radius:999px;background:var(--blue-soft);color:var(--blue)}
+.pill.pro{background:var(--orange-soft);color:var(--orange)}
+.pill.good{background:color-mix(in srgb,var(--good) 18%,transparent);color:var(--good)}
+main{flex:1;padding:8px 16px 96px;display:flex;flex-direction:column;gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.row{display:flex;align-items:center;gap:10px}
+.between{justify-content:space-between}
+.stack{display:flex;flex-direction:column;gap:10px}
+
+/* Home */
+.greet h1{font-size:30px}
+.route-card{padding:0;overflow:hidden}
+.route-card canvas{display:block;width:100%;height:190px;background:var(--blue-soft)}
+.route-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 16px 14px}
+.stat b{display:block;font-family:var(--display);font-size:24px;font-weight:700;line-height:1.1}
+.stat span{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+.next h2{font-size:26px}
+.strip{display:flex;height:14px;border-radius:7px;overflow:hidden;gap:2px;margin:12px 0 6px}
+.strip i{display:block;height:100%}
+.strip .run{background:var(--orange)}
+.strip .walk{background:var(--blue)}
+.strip .warm,.strip .cool{background:var(--blue-soft)}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);font-weight:700}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.start{width:100%;border:0;border-radius:999px;background:var(--orange);color:#fff;font-family:var(--display);font-weight:800;font-size:30px;letter-spacing:.04em;padding:18px;text-transform:uppercase;box-shadow:0 10px 24px -10px color-mix(in srgb,var(--orange) 80%,transparent);display:flex;align-items:center;justify-content:center;gap:12px}
+.start:active{transform:scale(.98)}
+.start svg{width:26px;height:26px}
+.banner{border-radius:16px;padding:14px 16px;background:var(--blue-soft);border:1px solid color-mix(in srgb,var(--blue) 35%,transparent);display:flex;flex-direction:column;gap:10px}
+.banner b{color:var(--blue)}
+.btn{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:9px 16px;font-weight:800;font-size:14px}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.orange{background:var(--orange);border-color:var(--orange);color:#fff}
+.btn.ghost{background:transparent}
+.ring{position:relative;width:64px;height:64px;flex:none}
+.ring svg{transform:rotate(-90deg)}
+.ring b{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display);font-size:18px}
+
+/* Plan */
+.weeks{display:flex;flex-direction:column;gap:8px}
+.week{display:grid;grid-template-columns:62px 1fr;gap:12px;align-items:start;padding:12px 14px}
+.week .wk{font-family:var(--display);font-weight:700;font-size:20px;line-height:1.1}
+.week .wk small{display:block;font-family:var(--body);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:800}
+.sess{display:flex;align-items:center;gap:8px;font-size:14px;padding:3px 0}
+.dot{width:20px;height:20px;border-radius:50%;flex:none;display:grid;place-items:center;border:2px solid var(--line);font-size:11px;font-weight:800}
+.dot.done{background:var(--good);border-color:var(--good);color:#fff}
+.dot.now{border-color:var(--orange);background:var(--orange-soft);color:var(--orange)}
+.locked{opacity:.55}
+.lock{font-size:12px;font-weight:800;color:var(--orange)}
+.seg-tabs{display:flex;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px}
+.seg-tabs button{flex:1;border:0;background:transparent;border-radius:999px;padding:8px;font-weight:800;font-size:14px}
+.seg-tabs button[aria-pressed="true"]{background:var(--blue);color:#fff}
+
+/* History */
+.run-item{display:grid;grid-template-columns:56px 1fr auto;gap:12px;align-items:center;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:10px 14px}
+.run-item canvas{width:56px;height:56px;border-radius:10px;background:var(--blue-soft)}
+.run-item b{font-family:var(--display);font-size:20px}
+
+/* Profile */
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.toggle:first-of-type{border-top:0}
+.switch{position:relative;width:48px;height:28px;flex:none}
+.switch input{appearance:none;width:100%;height:100%;margin:0;border-radius:999px;background:var(--line);cursor:pointer;transition:background .2s}
+.switch input:checked{background:var(--good)}
+.switch input:disabled{cursor:not-allowed;opacity:.5}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;pointer-events:none;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.switch:has(input:checked)::after{transform:translateX(20px)}
+.prices{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.price{border:2px solid var(--line);border-radius:16px;padding:14px;text-align:left;background:var(--card)}
+.price[aria-pressed="true"]{border-color:var(--orange);background:var(--orange-soft)}
+.price b{display:block;font-family:var(--display);font-size:30px;line-height:1}
+.price .small{display:block;margin-top:4px}
+
+/* Tab bar */
+nav.tabs{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;background:color-mix(in srgb,var(--card) 92%,transparent);backdrop-filter:blur(10px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav.tabs div{display:flex;width:100%;max-width:440px}
+nav.tabs button{flex:1;border:0;background:transparent;padding:10px 4px 12px;font-size:12px;font-weight:800;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px}
+nav.tabs button svg{width:22px;height:22px}
+nav.tabs button[aria-current="page"]{color:var(--orange)}
+
+/* Run overlay */
+.runner{position:fixed;inset:0;z-index:20;display:none;flex-direction:column;background:var(--phase,var(--blue));color:#fff;transition:background .4s}
+.runner.on{display:flex}
+.runner .wrap{max-width:440px;width:100%;margin:0 auto;flex:1;display:flex;flex-direction:column;padding:calc(16px + env(safe-area-inset-top)) 18px calc(22px + env(safe-area-inset-bottom));gap:12px}
+.runner .phase{font-family:var(--display);font-weight:800;font-size:64px;line-height:.9;letter-spacing:.03em}
+.runner .clock{font-family:var(--display);font-weight:700;font-size:104px;line-height:.9;font-variant-numeric:tabular-nums}
+.runner .nexts{font-weight:700;opacity:.9}
+.runner .bar{display:flex;gap:2px;height:10px}
+.runner .bar i{flex:1;border-radius:3px;background:rgba(255,255,255,.28)}
+.runner .bar i.done{background:#fff}
+.runner .bar i.cur{background:rgba(255,255,255,.65)}
+.runner .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:rgba(0,0,0,.14);border-radius:16px;padding:12px}
+.runner .grid b{display:block;font-family:var(--display);font-size:28px;line-height:1.05;font-variant-numeric:tabular-nums}
+.runner .grid span{font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:800;opacity:.85}
+.runner canvas{width:100%;flex:1;min-height:120px;border-radius:16px;background:rgba(0,0,0,.14)}
+.runner .ctrls{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:10px}
+.runner .ctrls button{border:2px solid rgba(255,255,255,.7);background:transparent;color:#fff;border-radius:999px;padding:13px 6px;font-weight:800}
+.runner .ctrls button.main{background:#fff;color:var(--ink);border-color:#fff;font-size:18px}
+.runner .topline{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:800}
+.runner .chip{background:rgba(0,0,0,.18);border-radius:999px;padding:4px 10px;border:0;color:#fff;font-weight:800;font-size:12px}
+
+/* Sheet */
+.sheet{position:fixed;inset:0;z-index:30;display:none;align-items:flex-end;justify-content:center;background:rgba(5,20,32,.55)}
+.sheet.on{display:flex}
+.sheet .panel{background:var(--sky);width:100%;max-width:440px;max-height:92%;overflow:auto;border-radius:24px 24px 0 0;padding:20px 18px calc(26px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:14px}
+.sheet h2{font-size:30px}
+.splits{display:flex;flex-direction:column;gap:6px}
+.split{display:grid;grid-template-columns:44px 1fr 56px;gap:8px;align-items:center;font-size:14px}
+.split .b{height:14px;border-radius:4px;background:var(--blue)}
+.split .b.best{background:var(--orange)}
+.blur{filter:blur(5px);pointer-events:none;user-select:none}
+.teaser{position:relative}
+.teaser .over{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+.install{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px}
+.install img{width:44px;height:44px;border-radius:11px;flex:none}
+.install p{margin:0;font-size:14px;flex:1}
+.share-ico{display:inline-block;width:16px;height:16px;vertical-align:-3px;color:var(--blue)}
+
+/* Computer: telefonramme */
+html.desk body{background:radial-gradient(1200px 700px at 75% 20%,var(--blue-soft),var(--sky));overflow:hidden}
+html.desk .app,html.desk nav.tabs,html.desk .runner,html.desk .sheet{display:none!important}
+.stage[hidden]{display:none}
+html.embed header.top{padding-top:56px}
+html.embed .runner .wrap{padding-top:58px}
+.stage{height:100%;display:grid;grid-template-columns:minmax(0,420px) auto;justify-content:center;align-items:center;gap:72px;padding:24px 40px}
+.pitch{display:flex;flex-direction:column;gap:18px}
+.pitch h1{font-size:64px;line-height:.95}
+.pitch h1 em{font-style:normal;color:var(--orange)}
+.pitch p{margin:0;color:var(--muted);font-size:17px;max-width:38ch}
+.qr{display:flex;gap:16px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;max-width:360px}
+.qr canvas,.qr img{width:112px;height:112px;flex:none;image-rendering:pixelated;background:#fff;border-radius:8px}
+.qr b{display:block;font-family:var(--display);font-size:22px;line-height:1.1;margin-bottom:4px}
+.device{--w:390px;--h:844px;width:calc(var(--w) + 28px);height:calc(var(--h) + 28px);padding:14px;border-radius:64px;background:#0b0f14;box-shadow:0 0 0 2px #2a3340,0 40px 80px -30px rgba(13,43,64,.55);position:relative;transform-origin:center}
+.device iframe{width:var(--w);height:var(--h);border:0;border-radius:50px;display:block;background:var(--sky)}
+.device::before{content:"";position:absolute;top:26px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:20px;background:#0b0f14;z-index:2}
+@media (max-width:1000px){.pitch{display:none}.stage{grid-template-columns:auto}}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="stage" id="stage" hidden>
+  <div class="pitch">
+    <div class="logo"><i></i><span>LØBEKLAR</span></div>
+    <h1>Fra sofa til <em>5 km</em> på 8 uger</h1>
+    <p>Gang og løb i en plan, der tilpasser sig, hvis du springer en dag over. En stemme i ørerne siger til, når du skal skifte, og GPS viser rute og tempo. Bagefter venter 10 km.</p>
+    <div class="qr"><div id="qr"></div><div><b>Åbn på din telefon</b><span class="small muted">Scan koden, og tryk så <b style="display:inline;font:inherit;font-weight:800">Del → Føj til hjemmeskærm</b> (iPhone) eller <b style="display:inline;font:inherit;font-weight:800">Installer app</b> (Android).</span></div></div>
+  </div>
+  <div class="device" id="device"><iframe id="phoneFrame" title="Løbeklar på en telefon" allow="geolocation; screen-wake-lock"></iframe></div>
+</div>
+<div class="app">
+  <header class="top">
+    <div class="logo"><i></i><span>LØBEKLAR</span></div>
+    <span id="tier" class="pill">Gratis</span>
+  </header>
+  <main id="view"></main>
+</div>
+
+<nav class="tabs" aria-label="Hovedmenu"><div>
+  <button data-tab="hjem" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>Hjem</button>
+  <button data-tab="plan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Plan</button>
+  <button data-tab="historik"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Statistik</button>
+  <button data-tab="profil"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>Profil</button>
+</div></nav>
+
+<section class="runner" id="runner" aria-live="polite">
+  <div class="wrap">
+    <div class="topline">
+      <span id="rTitle">Uge 2 · Træning 1</span>
+      <span class="row" style="gap:6px">
+        <button class="chip" id="rVoice">Stemme: til</button>
+        <button class="chip" id="rSpeed" title="Spol træningen frem i demoen">Demo 1×</button>
+      </span>
+    </div>
+    <div class="bar" id="rBar"></div>
+    <div>
+      <div class="phase" id="rPhase">LØB</div>
+      <div class="clock" id="rClock">1:00</div>
+      <div class="nexts" id="rNext">Næste: Gå 1:30</div>
+    </div>
+    <div class="grid">
+      <div><b id="rDist">0,00</b><span>km</span></div>
+      <div><b id="rPace">–:––</b><span>tempo /km</span></div>
+      <div><b id="rEl">0:00</b><span>tid</span></div>
+    </div>
+    <canvas id="rMap" aria-label="Din rute indtil nu"></canvas>
+    <div class="topline"><span id="rGps">GPS: søger…</span><span id="rSteps"></span></div>
+    <div class="ctrls">
+      <button id="rSkip">Spring over</button>
+      <button class="main" id="rPause">Pause</button>
+      <button id="rStop">Afslut</button>
+    </div>
+  </div>
+</section>
+
+<div class="sheet" id="sheet" role="dialog" aria-modal="true"><div class="panel" id="sheetBody"></div></div>
+
+<script>
+function boot(){
+/* ---------- Plans ---------- */
+const rep=(n,r,w)=>{const a=[];for(let i=0;i<n;i++){a.push(['run',r]);if(i<n-1)a.push(['walk',w]);}return a};
+const PLANS={
+  '5k':{name:'0 til 5 km',short:'5 km',weeks:[
+    [rep(8,1,1.5),rep(8,1,1.5),rep(8,1,1.5)],
+    [rep(6,1.5,2),rep(6,1.5,2),rep(6,1.5,2)],
+    [rep(6,2,1.5),rep(6,2,1.5),rep(5,3,1.5)],
+    [rep(5,3,1.5),rep(4,4,1.5),rep(4,4,1.5)],
+    [rep(4,5,2),rep(3,6,2),rep(2,8,2)],
+    [rep(3,8,2),rep(2,10,2),[['run',12],['walk',2],['run',10]]],
+    [rep(2,15,2),[['run',18],['walk',1],['run',5]],[['run',22]]],
+    [[['run',25]],[['run',28]],[['run',30]]]
+  ]},
+  '10k':{name:'5 til 10 km',short:'10 km',weeks:[
+    [rep(3,10,1),[['run',35]],rep(2,18,1)],
+    [[['run',38]],rep(4,10,1),[['run',40]]],
+    [[['run',42]],rep(3,15,1),[['run',45]]],
+    [[['run',48]],rep(2,25,2),[['run',50]]],
+    [[['run',52]],rep(3,18,1),[['run',55]]],
+    [[['run',45]],rep(2,30,1),[['run',62]]]
+  ]}
+};
+const FREE_WEEKS=2;
+const PRICE_M=49, PRICE_Y=299;
+
+function segments(plan,w,s){
+  const blocks=PLANS[plan].weeks[w][s];
+  return [{t:'warm',d:300},...blocks.map(([t,m])=>({t,d:Math.round(m*60)})),{t:'cool',d:300}];
+}
+const fmtMin=m=>(m%1? (Math.floor(m)||'')+'½':m)+' min';
+function describe(plan,w,s){
+  const b=PLANS[plan].weeks[w][s];
+  const runs=b.filter(x=>x[0]==='run'),walks=b.filter(x=>x[0]==='walk');
+  if(runs.length===1) return fmtMin(runs[0][1])+' løb uden pause';
+  const same=runs.every(r=>r[1]===runs[0][1])&&walks.every(x=>x[1]===walks[0][1]);
+  if(same) return runs.length+' × '+fmtMin(runs[0][1])+' løb, '+fmtMin(walks[0][1])+' gang imellem';
+  return b.map(([t,m])=>fmtMin(m)+(t==='run'?' løb':' gang')).join(' · ');
+}
+const totalSec=segs=>segs.reduce((a,x)=>a+x.d,0);
+const isLocked=(plan,w)=>!st.premium&&(plan==='10k'||w>=FREE_WEEKS);
+const sessLabel=(plan,w,s)=>(plan==='10k'?'10 km · ':'')+'Uge '+(w+1)+' · Træning '+(s+1);
+
+/* ---------- Helpers ---------- */
+const $=s=>document.querySelector(s);
+const DAY=864e5;
+function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const fmtT=s=>{s=Math.max(0,Math.round(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=String(s%60).padStart(2,'0');return h?h+':'+String(m).padStart(2,'0')+':'+x:m+':'+x};
+const km=m=>(m/1000).toFixed(2).replace('.',',');
+const pace=(sec,m)=>m<30||!isFinite(sec/m)?'–:––':fmtT(sec/m*1000);
+const dayStart=t=>{const d=new Date(t);d.setHours(0,0,0,0);return d.getTime()};
+const daysBetween=(a,b)=>Math.round((dayStart(b)-dayStart(a))/DAY);
+const DOW=['søn','man','tir','ons','tor','fre','lør'],MON=['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
+const fmtDate=t=>{const d=new Date(t);return DOW[d.getDay()]+'. '+d.getDate()+'. '+MON[d.getMonth()]};
+function nextOf(plan,w,s){s++;if(s>2){s=0;w++}return {w,s,done:w>=PLANS[plan].weeks.length}}
+
+/* ---------- Simulator (demo route / pace / steps) ---------- */
+function makeSim(seed){
+  const r=mulberry(seed);
+  return {r,dist:0,x:0,y:0,h:r()*6.28,pts:[[0,0]],steps:0,splits:[],el:0,lastSplit:0,hist:[0],
+    step(type,move=true){
+      if(move){
+        const base=type==='run'?2.7:type==='walk'?1.55:1.4;
+        const v=base*(0.9+r()*0.2);
+        this.h+=(r()-0.5)*0.12+0.0055;
+        this.x+=Math.cos(this.h)*v;this.y+=Math.sin(this.h)*v;this.dist+=v;
+      }
+      this.el++;
+      this.steps+=type==='run'?2.8:1.85;
+      if(move&&this.el%5===0)this.pts.push([this.x,this.y]);
+      while(this.dist>=(this.splits.length+1)*1000){this.splits.push(this.el-this.lastSplit);this.lastSplit=this.el}
+      this.hist.push(this.dist);
+    }};
+}
+function simulateWhole(plan,w,s,seed){
+  const sim=makeSim(seed);
+  for(const g of segments(plan,w,s))for(let i=0;i<g.d;i++)sim.step(g.t);
+  return pack(sim,plan,w,s);
+}
+function pack(sim,plan,w,s){
+  const pts=sim.pts.filter((_,i)=>i%2===0).map(p=>[Math.round(p[0]),Math.round(p[1])]);
+  return {plan,w,s,dur:sim.el,dist:Math.round(sim.dist),steps:Math.round(sim.steps),splits:sim.splits.slice(),tail:sim.el-sim.lastSplit,pts};
+}
+
+/* ---------- State ---------- */
+const KEY='lobeklar-v1';
+function seedState(){
+  const now=Date.now(),hist=[];
+  [[0,0,-14],[0,1,-12],[0,2,-9],[1,0,-5]].forEach(([w,s,d],i)=>{
+    const r=simulateWhole('5k',w,s,101+i*7);r.date=now+d*DAY-3600e3*(i%2?2:5);hist.push(r);
+  });
+  return {plan:'5k',week:1,session:1,premium:false,voice:true,health:{apple:false,google:false},history:hist,ackGap:null,done5k:false};
+}
+let st;
+try{st=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(!st||!st.history)st=seedState();
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}};
+
+/* Auto-justering: holder man for lang pause, går planen et skridt tilbage */
+function upcoming(){
+  let {plan,week:w,session:s}=st;
+  const last=st.history[st.history.length-1];
+  if(!last||st.planDone)return {plan,w,s,gap:0};
+  const gap=daysBetween(last.date,Date.now());
+  if(st.ackGap===last.date)return {plan,w,s,gap};
+  const from={w,s};
+  if(gap>=21&&w>0){w--;s=0}
+  else if(gap>=10){s=0}
+  else if(gap>=5){if(s>0)s--;else if(w>0){w--;s=2}}
+  const changed=from.w!==w||from.s!==s;
+  return {plan,w,s,gap,adjusted:changed?from:null};
+}
+
+/* ---------- Canvas route ---------- */
+function drawRoute(cv,pts,{light=false,grid=true}={}){
+  const dpr=window.devicePixelRatio||1,W=cv.clientWidth||300,H=cv.clientHeight||150;
+  cv.width=W*dpr;cv.height=H*dpr;const c=cv.getContext('2d');c.scale(dpr,dpr);
+  const css=getComputedStyle(document.documentElement);
+  const blue=css.getPropertyValue('--blue').trim(),orange=css.getPropertyValue('--orange').trim(),line=css.getPropertyValue('--line').trim();
+  c.clearRect(0,0,W,H);
+  if(grid){c.strokeStyle=light?'rgba(255,255,255,.12)':line;c.lineWidth=1;
+    for(let x=18;x<W;x+=36){c.beginPath();c.moveTo(x,0);c.lineTo(x+H*.2,H);c.stroke()}
+    for(let y=22;y<H;y+=44){c.beginPath();c.moveTo(0,y);c.lineTo(W,y-W*.08);c.stroke()}}
+  if(!pts||pts.length<2)return;
+  let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity;
+  for(const[x,y]of pts){x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y)}
+  const pad=Math.min(W,H)*.14,sc=Math.min((W-2*pad)/Math.max(x1-x0,40),(H-2*pad)/Math.max(y1-y0,40));
+  const ox=(W-(x1-x0)*sc)/2,oy=(H-(y1-y0)*sc)/2;
+  const P=([x,y])=>[ox+(x-x0)*sc,oy+(y1-y)*sc];
+  c.lineJoin=c.lineCap='round';
+  c.strokeStyle=light?'rgba(255,255,255,.35)':'rgba(255,255,255,.7)';c.lineWidth=Math.max(5,W/45);
+  c.beginPath();pts.forEach((p,i)=>{const[a,b]=P(p);i?c.lineTo(a,b):c.moveTo(a,b)});c.stroke();
+  c.strokeStyle=light?'#fff':blue;c.lineWidth=Math.max(2.5,W/90);c.stroke();
+  const[sx,sy]=P(pts[0]),[ex,ey]=P(pts[pts.length-1]);
+  c.fillStyle=light?'rgba(255,255,255,.6)':blue;c.beginPath();c.arc(sx,sy,Math.max(3,W/70),0,7);c.fill();
+  c.fillStyle=orange;c.strokeStyle='#fff';c.lineWidth=2;c.beginPath();c.arc(ex,ey,Math.max(4,W/50),0,7);c.fill();c.stroke();
+}
+
+/* ---------- Gem på hjemmeskærm ---------- */
+const STANDALONE=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+const IOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+let installEvt=null,hideInstall=false;
+try{hideInstall=localStorage.getItem('lobeklar-install')==='skjul'}catch(e){}
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;if(tab==='hjem')render()});
+addEventListener('appinstalled',()=>{hideInstall=true;render()});
+const SHARE_ICO='<svg class="share-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15V3M8 7l4-4 4 4M5 11v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9"/></svg>';
+function installHTML(){
+  if(STANDALONE||hideInstall||window.top!==window)return '';
+  if(!IOS&&!installEvt)return '';
+  return `<div class="install"><img src="icons/icon-192.png" alt=""><p>${IOS?'<b>Gem Løbeklar på hjemmeskærmen:</b> tryk på '+SHARE_ICO+' Del og vælg <b>Føj til hjemmeskærm</b>.':'<b>Installer Løbeklar</b> og åbn den fra hjemmeskærmen som en app.'}</p>
+  ${IOS?'':'<button class="btn orange" id="doInstall">Installer</button>'}<button class="btn ghost" id="noInstall" aria-label="Skjul">✕</button></div>`;
+}
+
+/* ---------- Views ---------- */
+let tab='hjem',planTab='5k';
+const ICON_PLAY='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"/></svg>';
+
+function stripHTML(segs){
+  return '<div class="strip" aria-hidden="true">'+segs.map(g=>`<i class="${g.t}" style="flex:${g.d}"></i>`).join('')+'</div>'+
+  '<div class="legend"><span><i style="background:var(--orange)"></i>Løb</span><span><i style="background:var(--blue)"></i>Gang</span><span><i style="background:var(--blue-soft)"></i>Op-/nedvarmning</span></div>';
+}
+function progressCount(){const n=st.history.filter(h=>h.plan===st.plan).length;return n}
+
+function renderHome(){
+  const u=upcoming(),last=st.history[st.history.length-1];
+  const total=PLANS[st.plan].weeks.length*3;
+  const doneCount=st.planDone?total:st.week*3+st.session;
+  const pct=doneCount/total,C=2*Math.PI*27;
+  let html=installHTML()+`<div class="row between greet"><div><div class="muted small">${fmtDate(Date.now())}</div><h1>${st.planDone?'Plan gennemført!':'Klar til næste tur?'}</h1></div>
+    <div class="ring" title="${doneCount} af ${total} træninger"><svg width="64" height="64"><circle cx="32" cy="32" r="27" stroke="var(--line)" stroke-width="7" fill="none"/><circle cx="32" cy="32" r="27" stroke="var(--orange)" stroke-width="7" fill="none" stroke-linecap="round" stroke-dasharray="${C*pct} ${C}"/></svg><b class="num">${Math.round(pct*100)}%</b></div></div>`;
+
+  if(u.adjusted){
+    html+=`<div class="banner" role="status"><div><b>Planen er justeret.</b> Det er ${u.gap} dage siden dit sidste løb, så du springer ikke direkte videre til ${sessLabel(u.plan,u.adjusted.w,u.adjusted.s).toLowerCase()}. I dag gentager vi <b>${sessLabel(u.plan,u.w,u.s)}</b>, så kroppen kan følge med.</div>
+      <div class="row"><button class="btn primary" id="okAdj">Fint, kør</button><button class="btn ghost" id="keepPlan">Hold den oprindelige plan</button></div></div>`;
+  }
+
+  if(last){
+    html+=`<div class="card route-card"><canvas id="homeMap" aria-label="Rute fra seneste løb"></canvas>
+      <div class="route-meta">
+        <div class="stat"><span>Seneste</span><b class="num">${km(last.dist)} km</b></div>
+        <div class="stat"><span>Tid</span><b class="num">${fmtT(last.dur)}</b></div>
+        <div class="stat"><span>Tempo</span><b class="num">${pace(last.dur,last.dist)}</b></div>
+      </div><div class="small muted" style="padding:0 16px 14px;margin-top:-6px">${fmtDate(last.date)} · ${sessLabel(last.plan,last.w,last.s)}</div></div>`;
+  }
+
+  if(st.planDone){
+    html+=`<div class="card stack"><h2 style="font-size:26px">Du har nået ${PLANS[st.plan].short}</h2><p class="muted" style="margin:0">${st.plan==='5k'?'Næste skridt er 10 km-planen: 6 uger, tre ture om ugen, fra 35 til 62 minutters løb.':'Du løber nu 10 km. Hold formen med 2–3 ture om ugen.'}</p>
+      ${st.plan==='5k'?'<button class="start" id="go10">Vælg 10 km-plan</button>':''}</div>`;
+  }else{
+    const segs=segments(u.plan,u.w,u.s),locked=isLocked(u.plan,u.w);
+    const runMin=segs.filter(g=>g.t==='run').reduce((a,g)=>a+g.d,0)/60;
+    html+=`<div class="card next"><div class="row between"><span class="pill">${PLANS[u.plan].name}</span>${locked?'<span class="pill pro">Premium</span>':''}</div>
+      <h2 style="margin-top:10px">${sessLabel(u.plan,u.w,u.s)}</h2>
+      <div>${describe(u.plan,u.w,u.s)}</div>
+      ${stripHTML(segs)}
+      <div class="row small muted" style="margin-top:8px;gap:16px"><span class="num"><b style="color:var(--ink)">${Math.round(totalSec(segs)/60)} min</b> i alt</span><span class="num"><b style="color:var(--ink)">${runMin%1?runMin.toFixed(1).replace('.',','):runMin} min</b> løb</span></div></div>
+      <button class="start" id="go">${ICON_PLAY}Start løb</button>
+      <p class="small muted" style="margin:-4px 0 0;text-align:center">En stemme siger til, hver gang du skal skifte mellem løb og gang.</p>`;
+  }
+  $('#view').innerHTML=html;
+  if(last)requestAnimationFrame(()=>drawRoute($('#homeMap'),last.pts));
+  $('#go')?.addEventListener('click',()=>{const u=upcoming();isLocked(u.plan,u.w)?paywall('Uge '+(u.w+1)+' og frem er en del af Premium.'):startRun(u)});
+  $('#okAdj')?.addEventListener('click',()=>{const u=upcoming();st.week=u.w;st.session=u.s;st.ackGap=st.history[st.history.length-1].date;save();render()});
+  $('#keepPlan')?.addEventListener('click',()=>{st.ackGap=st.history[st.history.length-1].date;save();render()});
+  $('#go10')?.addEventListener('click',choose10k);
+  $('#doInstall')?.addEventListener('click',async()=>{if(!installEvt)return;installEvt.prompt();try{await installEvt.userChoice}catch(e){}installEvt=null;render()});
+  $('#noInstall')?.addEventListener('click',()=>{hideInstall=true;try{localStorage.setItem('lobeklar-install','skjul')}catch(e){}render()});
+}
+
+function renderPlan(){
+  const p=PLANS[planTab],u=upcoming();
+  let html=`<h1 style="font-size:30px">Træningsplan</h1>
+  <div class="seg-tabs" role="group" aria-label="Vælg plan"><button data-p="5k" aria-pressed="${planTab==='5k'}">0 → 5 km · 8 uger</button><button data-p="10k" aria-pressed="${planTab==='10k'}">5 → 10 km · 6 uger</button></div>`;
+  if(planTab==='10k'&&!st.done5k)html+=`<div class="banner"><div><b>Låses op efter 5 km.</b> Gennemfør 0 til 5 km-planen, så kan du vælge at fortsætte mod 10 km. ${st.premium?'':'10 km-planen kræver Premium.'}</div></div>`;
+  html+='<p class="muted small" style="margin:0">Tre træninger om ugen, med mindst én hviledag imellem. Hver træning starter og slutter med 5 minutters gang.</p><div class="weeks">';
+  p.weeks.forEach((wk,w)=>{
+    const locked=isLocked(planTab,w);
+    html+=`<div class="card week ${locked?'locked':''}"><div class="wk">Uge ${w+1}${locked?'<small class="lock">Premium</small>':w<FREE_WEEKS&&planTab==='5k'?'<small>Gratis</small>':''}</div><div>`;
+    wk.forEach((_,s)=>{
+      const done=st.history.some(h=>h.plan===planTab&&h.w===w&&h.s===s);
+      const now=!st.planDone&&u.plan===planTab&&u.w===w&&u.s===s;
+      html+=`<div class="sess"><span class="dot ${done?'done':now?'now':''}">${done?'✓':s+1}</span><span>${describe(planTab,w,s)}</span></div>`;
+    });
+    html+='</div></div>';
+  });
+  html+='</div>';
+  $('#view').innerHTML=html;
+  document.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{planTab=b.dataset.p;render()});
+}
+
+function renderHistory(){
+  const h=st.history.slice().reverse();
+  const totD=h.reduce((a,x)=>a+x.dist,0),totT=h.reduce((a,x)=>a+x.dur,0),totS=h.reduce((a,x)=>a+x.steps,0);
+  let html=`<h1 style="font-size:30px">Statistik</h1>
+  <div class="card"><div class="route-meta" style="padding:0">
+    <div class="stat"><span>Løb</span><b class="num">${h.length}</b></div>
+    <div class="stat"><span>Km i alt</span><b class="num">${km(totD)}</b></div>
+    <div class="stat"><span>Tid i alt</span><b class="num">${fmtT(totT)}</b></div>
+  </div>
+  <div class="toggle" style="border-top:1px solid var(--line);margin-top:12px;padding-bottom:0"><span><b>Skridt i alt</b><br><span class="small muted">Skridttæller · Premium</span></span>
+    ${st.premium?`<b class="num" style="font-family:var(--display);font-size:24px">${totS.toLocaleString('da-DK')}</b>`:'<button class="btn orange" id="unlockSteps">Lås op</button>'}</div></div>
+  <div class="stack">`;
+  if(!h.length)html+='<p class="muted">Ingen løb endnu. Dit første løb dukker op her.</p>';
+  h.forEach((r,i)=>{html+=`<button class="run-item" data-i="${st.history.length-1-i}"><canvas></canvas><span><b class="num">${km(r.dist)} km</b><br><span class="small muted">${fmtDate(r.date)} · ${sessLabel(r.plan,r.w,r.s)}</span></span><span class="num small" style="text-align:right"><b style="font-size:17px">${pace(r.dur,r.dist)}</b><br><span class="muted">/km</span></span></button>`});
+  html+='</div>';
+  $('#view').innerHTML=html;
+  requestAnimationFrame(()=>document.querySelectorAll('.run-item').forEach(b=>drawRoute(b.querySelector('canvas'),st.history[b.dataset.i].pts,{grid:false})));
+  document.querySelectorAll('.run-item').forEach(b=>b.onclick=()=>runDetail(st.history[b.dataset.i]));
+  $('#unlockSteps')?.addEventListener('click',()=>paywall('Skridttælleren er en del af Premium.'));
+}
+
+function renderProfile(){
+  const P=st.premium;
+  let html=`<h1 style="font-size:30px">Profil</h1>
+  <div class="card stack"><div class="row between"><h2 style="font-size:24px">Løbeklar ${P?'Premium':'Gratis'}</h2><span class="pill ${P?'pro':''}">${P?'Aktiv':'Uge 1–2'}</span></div>
+   ${P?'<p class="muted" style="margin:0">Du har adgang til alle planer, skridttæller, statistik pr. løb og sync.</p><button class="btn" id="cancelPro">Afslut Premium (demo)</button>':'<p class="muted" style="margin:0">Gratis giver dig uge 1 og 2. Premium giver alle 8 uger, 10 km-planen, skridttæller, statistik pr. løb og sync med Apple Health og Google Fit.</p><button class="btn orange" id="getPro">Se Premium</button>'}</div>
+  <div class="card"><h3 style="font-size:20px;margin-bottom:4px">Under løbet</h3>
+    <label class="toggle" for="tVoice"><span><b>Stemme i ørerne</b><br><span class="small muted">Siger til ved skift, halvvejs og sidste interval</span></span><span class="switch"><input type="checkbox" id="tVoice" ${st.voice?'checked':''}></span></label>
+  </div>
+  <div class="card"><h3 style="font-size:20px;margin-bottom:4px">Sundhedsdata ${P?'':'<span class="pill pro" style="vertical-align:3px">Premium</span>'}</h3>
+    <label class="toggle" for="tApple"><span><b>Apple Health</b><br><span class="small muted">Gem løb, distance og skridt</span></span><span class="switch"><input type="checkbox" id="tApple" ${st.health.apple?'checked':''} ${P?'':'disabled'}></span></label>
+    <label class="toggle" for="tGoogle"><span><b>Google Fit</b><br><span class="small muted">Gem løb, distance og skridt</span></span><span class="switch"><input type="checkbox" id="tGoogle" ${st.health.google?'checked':''} ${P?'':'disabled'}></span></label>
+  </div>
+  <div class="card stack"><h3 style="font-size:20px">Prøv funktionerne</h3>
+    <p class="small muted" style="margin:0">Værktøjer til denne prototype. Giver telefonen ikke adgang til placering, simuleres ruten. Skridt anslås ud fra tid og tempo.</p>
+    <div class="row" style="flex-wrap:wrap;gap:8px">
+      <button class="btn" id="dGap">Lad som om: 6 dages pause</button>
+      <button class="btn" id="dLast">Hop til sidste 5 km-træning</button>
+      <button class="btn ghost" id="dReset">Nulstil</button>
+    </div></div>`;
+  $('#view').innerHTML=html;
+  $('#getPro')?.addEventListener('click',()=>paywall());
+  $('#cancelPro')?.addEventListener('click',()=>{st.premium=false;st.health={apple:false,google:false};save();render()});
+  $('#tVoice').onchange=e=>{st.voice=e.target.checked;save()};
+  $('#tApple').onchange=e=>{st.health.apple=e.target.checked;save()};
+  $('#tGoogle').onchange=e=>{st.health.google=e.target.checked;save()};
+  $('#dGap').onclick=()=>{const l=st.history[st.history.length-1];if(l){l.date=Date.now()-6*DAY;st.ackGap=null;save();go('hjem')}};
+  $('#dLast').onclick=()=>{st.plan='5k';st.week=7;st.session=2;st.planDone=false;const l=st.history[st.history.length-1];if(l)l.date=Date.now()-2*DAY;st.ackGap=null;save();go('hjem')};
+  $('#dReset').onclick=()=>{st=seedState();save();go('hjem')};
+}
+
+function render(){
+  $('#tier').textContent=st.premium?'Premium':'Gratis';$('#tier').className='pill'+(st.premium?' pro':'');
+  document.querySelectorAll('[data-tab]').forEach(b=>b.dataset.tab===tab?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current'));
+  ({hjem:renderHome,plan:renderPlan,historik:renderHistory,profil:renderProfile})[tab]();
+}
+function go(t){tab=t;if(location.hash.slice(1)!==t)history.replaceState(null,'','#'+t);window.scrollTo(0,0);render()}
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>go(b.dataset.tab));
+window.addEventListener('hashchange',()=>{const h=location.hash.slice(1);if(['hjem','plan','historik','profil'].includes(h)&&h!==tab){tab=h;render()}});
+
+/* ---------- Sheets ---------- */
+function openSheet(html){$('#sheetBody').innerHTML=html;$('#sheet').classList.add('on');$('#sheetBody').querySelector('button')?.focus()}
+function closeSheet(){$('#sheet').classList.remove('on')}
+$('#sheet').addEventListener('click',e=>{if(e.target.id==='sheet')closeSheet()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet()});
+
+let chosen='y';
+function paywall(reason){
+  const perMonth=(PRICE_Y/12).toFixed(2).replace('.',','),save=Math.round((1-PRICE_Y/(PRICE_M*12))*100);
+  openSheet(`<div class="row between"><span class="pill pro">Premium</span><button class="btn ghost" id="pwX">Luk</button></div>
+  <h2>Løb hele vejen til 10 km</h2>${reason?`<p style="margin:0"><b>${reason}</b></p>`:''}
+  <div class="stack small">
+    <div class="row"><span class="dot done">✓</span>Hele 8-ugers planen og 10 km-planen</div>
+    <div class="row"><span class="dot done">✓</span>Skridttæller under hvert løb</div>
+    <div class="row"><span class="dot done">✓</span>Statistik pr. løb: km-tider, kadence og skridt</div>
+    <div class="row"><span class="dot done">✓</span>Sync med Apple Health og Google Fit</div>
+  </div>
+  <div class="prices" role="group" aria-label="Vælg abonnement">
+    <button class="price" data-c="m" aria-pressed="${chosen==='m'}"><span class="small muted">Månedlig</span><b class="num">${PRICE_M} kr.</b><span class="small muted">pr. måned</span></button>
+    <button class="price" data-c="y" aria-pressed="${chosen==='y'}"><span class="small muted">Årlig · spar ${save} %</span><b class="num">${PRICE_Y} kr.</b><span class="small muted">${perMonth} kr. pr. måned</span></button>
+  </div>
+  <button class="start" id="buy" style="font-size:24px">Fortsæt med ${chosen==='y'?PRICE_Y+' kr./år':PRICE_M+' kr./md.'}</button>
+  <p class="small muted" style="margin:0;text-align:center">Prototype: knappen låser Premium op uden betaling.</p>`);
+  $('#pwX').onclick=closeSheet;
+  document.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{chosen=b.dataset.c;paywall(reason)});
+  $('#buy').onclick=()=>{st.premium=true;save();closeSheet();render()};
+}
+
+function splitsHTML(r){
+  const all=r.splits.map((s,i)=>({l:(i+1)+' km',s,full:true}));
+  if(r.tail>20&&r.dist%1000>50)all.push({l:km(r.dist%1000).replace(/^0,/,'0,'),s:r.tail/((r.dist%1000)/1000),full:false});
+  if(!all.length)return '<p class="muted small">For kort til km-tider.</p>';
+  const best=Math.min(...all.map(a=>a.s)),worst=Math.max(...all.map(a=>a.s));
+  return '<div class="splits">'+all.map(a=>`<div class="split"><span class="num muted">${a.full?a.l:'Rest'}</span><span><i class="b ${a.s===best?'best':''}" style="display:block;width:${30+70*(worst-a.s)/Math.max(1,worst-best)}%"></i></span><span class="num" style="text-align:right"><b>${fmtT(a.s)}</b></span></div>`).join('')+'</div><p class="small muted" style="margin:0">Tempo pr. km. Længere bjælke er hurtigere; orange er din hurtigste km.</p>';
+}
+function detailBody(r){
+  const cad=Math.round(r.steps/(r.dur/60));
+  return `<div class="card route-card"><canvas id="dMap" style="height:170px"></canvas>
+   <div class="route-meta"><div class="stat"><span>Distance</span><b class="num">${km(r.dist)} km</b></div><div class="stat"><span>Tid</span><b class="num">${fmtT(r.dur)}</b></div><div class="stat"><span>Tempo</span><b class="num">${pace(r.dur,r.dist)}</b></div></div></div>
+   <div class="teaser"><div class="card stack ${st.premium?'':'blur'}">
+     <div class="route-meta" style="padding:0"><div class="stat"><span>Skridt</span><b class="num">${r.steps.toLocaleString('da-DK')}</b></div><div class="stat"><span>Kadence</span><b class="num">${cad}</b></div><div class="stat"><span>Løbetid</span><b class="num">${fmtT(segments(r.plan,r.w,r.s).filter(g=>g.t==='run').reduce((a,g)=>a+g.d,0))}</b></div></div>
+     <h3 style="font-size:20px">Km-tider</h3>${splitsHTML(r)}</div>
+     ${st.premium?'':'<div class="over"><div class="stack" style="align-items:center"><b>Statistik pr. løb er Premium</b><button class="btn orange" id="dPro">Lås op</button></div></div>'}</div>`;
+}
+function runDetail(r){
+  openSheet(`<div class="row between"><span class="small muted">${fmtDate(r.date)}</span><button class="btn ghost" id="dX">Luk</button></div><h2>${sessLabel(r.plan,r.w,r.s)}</h2>`+detailBody(r));
+  $('#dX').onclick=closeSheet;$('#dPro')?.addEventListener('click',()=>paywall('Statistik pr. løb er en del af Premium.'));
+  requestAnimationFrame(()=>drawRoute($('#dMap'),r.pts));
+}
+function choose10k(){
+  if(!st.premium)return paywall('10 km-planen er en del af Premium.');
+  st.plan='10k';st.week=0;st.session=0;st.planDone=false;st.ackGap=null;planTab='10k';save();closeSheet();go('hjem');
+}
+
+/* ---------- Voice + beep ---------- */
+let daVoice=null;
+function pickVoice(){const v=speechSynthesis.getVoices();daVoice=v.find(x=>/^da/i.test(x.lang))||null}
+if('speechSynthesis' in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
+function say(t){
+  if(!st.voice||!('speechSynthesis' in window))return;
+  try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='da-DK';if(daVoice)u.voice=daVoice;u.rate=1.02;speechSynthesis.speak(u)}catch(e){}
+}
+let actx=null;
+function beep(f=880,d=.12){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=f;g.gain.setValueAtTime(.18,actx.currentTime);g.gain.exponentialRampToValueAtTime(.001,actx.currentTime+d);o.connect(g).connect(actx.destination);o.start();o.stop(actx.currentTime+d)}catch(e){}}
+function durWords(s){
+  if(s<60)return s+' sekunder';
+  const m=Math.floor(s/60),r=s%60;
+  if(s===90)return 'halvandet minut';
+  if(!r)return m===1?'et minut':m+' minutter';
+  return (m===1?'et minut':m+' minutter')+' og '+r+' sekunder';
+}
+
+/* ---------- Run engine ---------- */
+let run=null,timer=null,geoId=null,wake=null;
+const PH={warm:['OPVARMNING','Gå rask'],run:['LØB','Løb'],walk:['GÅ','Gå'],cool:['NEDKØLING','Gå roligt']};
+function cueFor(i){
+  const g=run.segs[i],lastRun=run.segs.map(x=>x.t).lastIndexOf('run');
+  if(g.t==='warm')return 'Lad os komme i gang. Start med '+durWords(g.d)+' rask gang.';
+  if(g.t==='cool')return 'Godt gået! Gå roligt i '+durWords(g.d)+' og køl ned.';
+  if(g.t==='run')return (i===lastRun&&run.segs.filter(x=>x.t==='run').length>1?'Sidste løbeinterval! ':'')+'Løb nu i '+durWords(g.d)+'.';
+  return 'Gå i '+durWords(g.d)+'.';
+}
+function startRun(u){
+  const segs=segments(u.plan,u.w,u.s);
+  run={plan:u.plan,w:u.w,s:u.s,segs,i:0,segT:0,total:totalSec(segs),sim:makeSim(Date.now()%100000),paused:false,speed:1,gps:'sim',half:false,geo:null};
+  $('#rTitle').textContent=sessLabel(u.plan,u.w,u.s);
+  $('#rBar').innerHTML=segs.map(g=>`<i style="flex:${g.d}"></i>`).join('');
+  $('#rVoice').textContent='Stemme: '+(st.voice?'til':'fra');
+  $('#rSpeed').textContent='Demo 1×';$('#rPause').textContent='Pause';
+  $('#runner').classList.add('on');document.body.style.overflow='hidden';
+  $('#rGps').textContent='GPS: søger…';
+  tryGps();
+  say(cueFor(0));beep(660);
+  paintRun();
+  timer=setInterval(tick,1000);
+  try{navigator.wakeLock?.request('screen').then(l=>{wake=l}).catch(()=>{})}catch(e){}
+}
+function tryGps(){
+  if(!navigator.geolocation){$('#rGps').textContent='GPS: simuleret rute (demo)';return}
+  try{
+    geoId=navigator.geolocation.watchPosition(p=>{
+      if(!run)return;
+      const {latitude:la,longitude:lo,accuracy:acc}=p.coords;
+      if(acc>40)return;
+      if(!run.geo){run.geo={la0:la,lo0:lo};run.gps='real';run.sim.pts=[[0,0]];run.sim.x=run.sim.y=0;run.sim.dist=0;$('#rGps').textContent='GPS: aktiv';return}
+      const x=(lo-run.geo.lo0)*111320*Math.cos(la*Math.PI/180),y=(la-run.geo.la0)*110540;
+      const d=Math.hypot(x-run.sim.x,y-run.sim.y);
+      if(d<2)return;
+      run.sim.dist+=d;run.sim.x=x;run.sim.y=y;run.sim.pts.push([x,y]);
+    },()=>{if(run){$('#rGps').textContent='GPS: simuleret rute (demo)'}},{enableHighAccuracy:true,maximumAge:2000,timeout:6000});
+  }catch(e){$('#rGps').textContent='GPS: simuleret rute (demo)'}
+  setTimeout(()=>{if(run&&run.gps==='sim')$('#rGps').textContent='GPS: simuleret rute (demo)'},6500);
+}
+function tick(){
+  if(!run||run.paused)return;
+  let cue=null;
+  for(let k=0;k<run.speed&&run;k++){
+    const g=run.segs[run.i];
+    run.sim.step(g.t,run.gps==='sim');
+    run.segT++;
+    const left=g.d-run.segT;
+    if(run.speed===1&&left<=3&&left>0&&run.i<run.segs.length-1)beep(left===1?1040:780,.09);
+    if(!run.half&&run.sim.el>=run.total/2){run.half=true;cue='Halvvejs. Du klarer det flot.'}
+    if(run.segT>=g.d){
+      run.i++;run.segT=0;
+      if(run.i>=run.segs.length){finishRun(true);return}
+      cue=cueFor(run.i);
+      if(run.speed===1)beep(1200,.25);
+    }
+  }
+  if(cue)say(cue);
+  paintRun();
+}
+function paintRun(){
+  const g=run.segs[run.i],nx=run.segs[run.i+1],sim=run.sim;
+  $('#runner').style.setProperty('--phase',g.t==='run'?'var(--orange)':g.t==='walk'?'var(--blue)':'color-mix(in srgb,var(--blue) 75%,#0d2b40)');
+  $('#rPhase').textContent=PH[g.t][0];
+  $('#rClock').textContent=fmtT(g.d-run.segT);
+  $('#rNext').textContent=nx?'Næste: '+PH[nx.t][1]+' '+fmtT(nx.d):'Sidste del – så er du færdig';
+  $('#rDist').textContent=km(sim.dist);
+  const h=sim.hist,n=Math.min(30,h.length-1);
+  $('#rPace').textContent=n>=10?pace(n,h[h.length-1]-h[h.length-1-n]):'–:––';
+  $('#rEl').textContent=fmtT(sim.el);
+  $('#rSteps').textContent=st.premium?Math.round(sim.steps).toLocaleString('da-DK')+' skridt':'Skridttæller: Premium';
+  [...$('#rBar').children].forEach((b,j)=>b.className=j<run.i?'done':j===run.i?'cur':'');
+  drawRoute($('#rMap'),sim.pts,{light:true});
+}
+function stopTimers(){clearInterval(timer);timer=null;try{wake?.release()}catch(e){}wake=null;if(geoId!=null){try{navigator.geolocation.clearWatch(geoId)}catch(e){}geoId=null}}
+function finishRun(complete){
+  stopTimers();
+  const r=pack(run.sim,run.plan,run.w,run.s);r.date=Date.now();r.complete=complete;
+  const tooShort=r.dur<60;
+  $('#runner').classList.remove('on');document.body.style.overflow='';
+  const was=run;run=null;
+  if(tooShort){say('Træningen er afbrudt.');render();return}
+  st.history.push(r);
+  let unlocked10=false;
+  if(complete){
+    const nx=nextOf(was.plan,was.w,was.s);
+    if(nx.done){st.planDone=true;if(was.plan==='5k'){st.done5k=true;unlocked10=true}}
+    else{st.week=nx.w;st.session=nx.s}
+    say('Træningen er slut. Du har tilbagelagt '+km(r.dist).replace(',',' komma ')+' kilometer. Godt løbet!');
+  }else say('Løbet er gemt.');
+  st.ackGap=null;save();
+  const synced=st.premium&&(st.health.apple||st.health.google);
+  openSheet(`<div class="row between"><span class="pill ${complete?'good':''}">${complete?'Gennemført':'Afbrudt'}</span><button class="btn ghost" id="fX">Luk</button></div>
+    <h2>${unlocked10?'Du kan løbe 5 km!':complete?'Godt løbet!':'Løbet er gemt'}</h2>
+    ${unlocked10?'<p style="margin:0">Hele 0 til 5 km-planen er gennemført. Vil du fortsætte mod 10 km?</p><button class="start" id="f10" style="font-size:24px">Vælg 10 km-plan</button>':''}
+    ${!complete?'<p class="muted" style="margin:0">Træningen tæller ikke som gennemført, så du får den igen næste gang.</p>':''}
+    ${synced?`<div class="pill good" style="align-self:flex-start">Sendt til ${[st.health.apple&&'Apple Health',st.health.google&&'Google Fit'].filter(Boolean).join(' og ')}</div>`:''}
+    ${detailBody(r)}`);
+  $('#fX').onclick=closeSheet;$('#f10')?.addEventListener('click',choose10k);$('#dPro')?.addEventListener('click',()=>paywall('Statistik pr. løb er en del af Premium.'));
+  requestAnimationFrame(()=>drawRoute($('#dMap'),r.pts));
+  go('hjem');
+}
+$('#rPause').onclick=()=>{if(!run)return;run.paused=!run.paused;$('#rPause').textContent=run.paused?'Fortsæt':'Pause';say(run.paused?'Pause.':'Vi fortsætter.')};
+$('#rSkip').onclick=()=>{if(!run)return;run.segT=run.segs[run.i].d-1;run.paused=false;$('#rPause').textContent='Pause';const sp=run.speed;run.speed=1;tick();if(run)run.speed=sp};
+$('#rStop').onclick=()=>{if(run)finishRun(false)};
+$('#rVoice').onclick=()=>{st.voice=!st.voice;save();$('#rVoice').textContent='Stemme: '+(st.voice?'til':'fra');if(!st.voice)try{speechSynthesis.cancel()}catch(e){}};
+$('#rSpeed').onclick=()=>{if(!run)return;run.speed=run.speed===1?10:run.speed===10?60:1;$('#rSpeed').textContent='Demo '+run.speed+'×'};
+
+/* ---------- Boot ---------- */
+const h0=location.hash.slice(1);
+if(['hjem','plan','historik','profil'].includes(h0))tab=h0;
+planTab=st.plan;
+render();
+window.addEventListener('resize',()=>{if(tab==='hjem'||tab==='historik')render()});
+}
+function mountFrame(){
+  const stage=document.getElementById('stage');stage.hidden=false;
+  const f=document.getElementById('phoneFrame');f.src=location.pathname+'?embed=1'+location.hash;
+  const dev=document.getElementById('device');
+  const fit=()=>{const k=Math.min(1,(innerHeight-40)/dev.offsetHeight);dev.style.transform='scale('+k+')';dev.style.margin=((k-1)*dev.offsetHeight/2)+'px '+((k-1)*dev.offsetWidth/2)+'px'};
+  fit();addEventListener('resize',fit);
+  const url=location.origin+location.pathname;
+  const sc=document.createElement('script');
+  sc.src='https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js';
+  sc.onload=()=>{const q=qrcode(0,'M');q.addData(url);q.make();document.getElementById('qr').innerHTML=q.createImgTag(4,0)};
+  sc.onerror=()=>{document.getElementById('qr').textContent=url};
+  document.head.appendChild(sc);
+}
+if(window.FRAMED)mountFrame();else boot();
+if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
